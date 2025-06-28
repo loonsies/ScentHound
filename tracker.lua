@@ -112,7 +112,7 @@ function tracker:HandleEntityUpdate(e)
         end
 
         if entry.Alarm then
-            local path = string.format('%saddons/%s/%s', AshitaCore:GetInstallPath(), addon.name, gSettings.Sound);
+            local path = string.format('%s/assets/%s', addon.path, gSettings.Sound);
             ashita.misc.play_sound(path);
         end
 

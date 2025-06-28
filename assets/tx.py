@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Used to create a basic texture to make line look a little nicer.
 from PIL import Image
 
 img = Image.open("dummy.png").convert("RGBA")
