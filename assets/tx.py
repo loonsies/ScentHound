@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 # Used to create a basic texture to make line look a little nicer.
 from PIL import Image
-
-img = Image.open("dummy.png").convert("RGBA")
-pixels = img.load()
 import math
+img = Image.new("RGBA", (500, 110), color=(255, 255, 255, 255))
+pixels = img.load()
 
 def distance(point1, point2):
     """
@@ -29,13 +28,13 @@ halfY = img.height / 2
 radius = halfY
 calcWidth = img.width - halfY
 
-# Precompute fade value at the seam to match both sides
-startScaleX = 1 - (0 / calcWidth)  # offset = 0 at x = halfY
-seamFade = int(minAlpha + ((maxAlpha - minAlpha) * startScaleX))  # full fade at start of taper
+# Precompute fade value where semicircle meets taper
+startScaleX = 1
+seamFade = int(minAlpha + ((maxAlpha - minAlpha) * startScaleX))
 
 for x in range(img.width):
     if x < halfY:
-        # Semicircle: use same fade as taper seam, scaled by circular distance
+        # semicircle at left end
         for y in range(img.height):
             dx = x - radius
             dy = y - halfY
@@ -46,6 +45,7 @@ for x in range(img.width):
                 a = int(seamFade * (1 - dist / radius))
             pixels[x, y] = (255, 255, 255, a)
     else:
+        # taper into cylinder at right end
         offset = x - halfY
         scaleX = 1 - (offset / calcWidth)
         fade = int(minAlpha + ((maxAlpha - minAlpha) * scaleX))
