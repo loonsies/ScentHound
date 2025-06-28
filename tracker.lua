@@ -91,14 +91,8 @@ function tracker:HandleEntityUpdate(e)
 
         --Get position..
         local index = struct.unpack('H', e.data, 0x08 + 1);
-        local position;
-        if bit.band(mask, 0x01) == 0x01 then
-            position = {
-                X = struct.unpack('f', e.data, 0x0C+1),
-                Y = struct.unpack('f', e.data, 0x14+1),
-                Z = struct.unpack('f', e.data, 0x10+1)
-            };
-        else
+        local position = gLocationCache[index];
+        if position == nil then
             local enemyEntity = GetEntity(index);
             if enemyEntity then
                 position = {
@@ -106,8 +100,6 @@ function tracker:HandleEntityUpdate(e)
                     Y = enemyEntity.Movement.LocalPosition.Y,
                     Z = enemyEntity.Movement.LocalPosition.Z,
                 };
-            else
-                position = gWidescanCache[index];
             end
         end
 

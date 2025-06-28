@@ -37,41 +37,48 @@ local function Tick()
     }
 
     local entMgr = AshitaCore:GetMemoryManager():GetEntity();
+    local zone = AshitaCore:GetMemoryManager():GetParty():GetMemberZone(0);
     local drawList = T{};
     for index=1,0x400 do
         local id = entMgr:GetServerId(index);
+        if id == 0 and gLocationCache[index] then
+            id = bit.bor(0x01000000, bit.lshift(zone, 0x0C), index);
+        end
         if id > 0 then
             local settings = gSettings.Monitored[id];
             if settings and settings.Draw then
                 local entity = GetEntity(index);
-                if entity then                
-                    local targetPosition = {
+                local targetPosition = gLocationCache[index];
+                if targetPosition == nil and entity ~= nil then
+                    targetPosition = {
                         X = entity.Movement.LocalPosition.X,
                         Y = entity.Movement.LocalPosition.Y,
                         Z = entity.Movement.LocalPosition.Z,
                     }
+                end
+
+                if targetPosition ~= nil then
                     local xDiff = targetPosition.X - myPosition.X;
                     local yDiff = targetPosition.Y - myPosition.Y;
                     local distance = math.sqrt((xDiff * xDiff) + (yDiff * yDiff));
 
-                    local draw = false;
-                    local isRendered = (bit.band(entity.Render.Flags0, 0x200) == 0x200) and (bit.band(entity.Render.Flags0, 0x4000) == 0);
-                    if (isRendered) then
-                        local srcPointer = entity.ActorPointer;
-                        local xOffset,yOffset,zOffset = GetBone(srcPointer, 2);
-                        targetPosition.Z = (ashita.memory.read_float(srcPointer + 0x67C) + zOffset) / 2;
-                        draw = distance > 5;
-                    elseif (bit.band(entity.Render.Flags0, 0x00040000) == 0) then
+                    local draw = false
+                    if (entity == nil) then
                         draw = true;
+                    else
+                        local isRendered = (entity ~= nil) and (bit.band(entity.Render.Flags0, 0x200) == 0x200) and (bit.band(entity.Render.Flags0, 0x4000) == 0);
+                        if (isRendered) then
+                            local srcPointer = entity.ActorPointer;
+                            local xOffset,yOffset,zOffset = GetBone(srcPointer, 2);
+                            targetPosition.Z = (ashita.memory.read_float(srcPointer + 0x67C) + zOffset) / 2;
+                            draw = distance > 5;
+                        elseif (entity ~= nil) and (bit.band(entity.Render.Flags0, 0x00040000) == 0) then
+                            draw = true;
+                        end
                     end
 
                     if draw then
                         drawList:append({Position=targetPosition, Color=settings.Color or gSettings.DefaultColor });
-                    end
-                else
-                    local ws = gWidescanCache[index];
-                    if ws then
-                        drawList:append({Position=ws, Color=settings.Color or gSettings.DefaultColor });
                     end
                 end
             end

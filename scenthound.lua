@@ -1,6 +1,6 @@
 addon.name      = 'ScentHound';
 addon.author    = 'Thorny';
-addon.version   = '1.01';
+addon.version   = '1.02';
 addon.desc      = 'Tracks monster and NPC spawns and provides alerts/onscreen indications.';
 addon.link      = 'https://ashitaxi.com/';
 
@@ -24,7 +24,7 @@ gPacketList = {};
 gZoneList = {};
 gUpdate = false;
 gUpdateTimer = 0;
-gWidescanCache = {};
+gLocationCache = {};
 
 local function TrySaveSettings(force)    
     if (gUpdate) and ((force) or (os.clock() > gUpdateTimer)) then
@@ -74,7 +74,7 @@ end);
 ashita.events.register('packet_in', 'scenthound_handleincomingpacket', function (e)
     if (e.id == 0x00A) then
         gPacketList = {};
-        gWidescanCache = {};
+        gLocationCache = {};
         TrySaveSettings(true);
         local zone = struct.unpack('H', e.data, 0x30 + 1);;
         local subZone = struct.unpack('H', e.data, 0x9E + 1);
@@ -83,12 +83,22 @@ ashita.events.register('packet_in', 'scenthound_handleincomingpacket', function 
     end
 
     if (e.id == 0x00E) then
+        --Update location cache if position is provided..
+        if bit.band(struct.unpack('B', e.data, 0x0A + 1), 0x01) == 0x01 then
+            local index = struct.unpack('H', e.data, 0x08 + 1);
+            gLocationCache[index] = {
+                X = struct.unpack('f', e.data, 0x0C+1),
+                Y = struct.unpack('f', e.data, 0x14+1),
+                Z = struct.unpack('f', e.data, 0x10+1)
+            };
+        end
+        
         tracker:HandleEntityUpdate(e);
     end
 
     if (e.id == 0xF5) then
         local index = struct.unpack('H', e.data, 0x12+1);
-        gWidescanCache[index] = {
+        gLocationCache[index] = {
             X = struct.unpack('f', e.data, 0x04+1),
             Y = struct.unpack('f', e.data, 0x0C+1),
             Z = struct.unpack('f', e.data, 0x08+1)
