@@ -148,6 +148,17 @@ function gui:Tick()
                         if imgui.Selectable(entry:ToString(), index == zoneSelection) then
                             zoneSelection = index;
                         end
+                        if (imgui.IsItemHovered() and imgui.IsMouseDoubleClicked(0)) then
+                            if gSettings.Monitored[entry.Id] ~= entry then
+                                gSettings.Monitored[entry.Id] = entry;
+                                gUpdate = true;
+                                gUpdateTimer = os.clock() + 5;
+                                print(chat.header('ScentHound') .. chat.message(string.format('%s added to tracking.', entry:ToString())));
+                                RebuildTracking();
+                            else
+                                print(chat.header('ScentHound') .. chat.error(string.format('%s is already being tracked.', entry:ToString())));
+                            end
+                        end
                     end
                     imgui.EndChild();
                 end
