@@ -1,3 +1,23 @@
+-- Process the single packet queue even if UI is hidden
+function ProcessSinglePacketQueue()
+    if singlePacketQueue ~= nil and #singlePacketQueue > 0 then
+        local delay = gSettings.PacketSearchDelay or 1.5
+        if os.clock() >= singlePacketNextSend then
+            local entry = table.remove(singlePacketQueue, 1)
+            if entry then
+                local packet = struct.pack('LL', 0, bit.band(entry.Id, 0x7FF))
+                AshitaCore:GetPacketManager():AddOutgoingPacket(0x16, packet:totable())
+                print(chat.header('ScentHound') .. chat.message(string.format('Sent update request packet for %s.', entry:ToString())))
+            end
+            singlePacketNextSend = os.clock() + delay
+        end
+        if #singlePacketQueue == 0 then
+            singlePacketQueue = nil
+            print(chat.header('ScentHound') .. chat.message('All packets sent.'))
+        end
+    end
+end
+
 local zoneDat = require('zonedat');
 local imgui = require('imgui');
 
@@ -18,6 +38,7 @@ local profileInputModal = { visible = false, alreadyExisting = false, input = { 
 local profileConfirmModal = { visible = false, action = '', name = '' }
 
 function gui:Init()
+    if not gSettings.EntityColors then gSettings.EntityColors = {} end
     if not gSettings.Profiles then gSettings.Profiles = {} end
     if not gSettings.LastProfile then gSettings.LastProfile = '' end
 
@@ -59,6 +80,10 @@ function gui:Init()
         sortedTrack = T {}
         for _, entry in pairs(gZoneList) do
             if gSettings.Monitored[entry.Id] ~= nil and isValidMob(entry) then
+                -- Load color from settings if present
+                if gSettings.EntityColors and gSettings.EntityColors[entry.Id] then
+                    entry.Color = gSettings.EntityColors[entry.Id]
+                end
                 sortedTrack:append(entry)
             end
         end
@@ -281,26 +306,11 @@ function gui:Tick()
             imgui.EndPopup()
         end
 
-        if singlePacketQueue ~= nil and #singlePacketQueue > 0 then
-            local delay = gSettings.PacketSearchDelay or 1.5
-            if os.clock() >= singlePacketNextSend then
-                local entry = table.remove(singlePacketQueue, 1)
-                if entry then
-                    local packet = struct.pack('LL', 0, bit.band(entry.Id, 0x7FF))
-                    AshitaCore:GetPacketManager():AddOutgoingPacket(0x16, packet:totable())
-                    print(chat.header('ScentHound') .. chat.message(string.format('Sent update request packet for %s.', entry:ToString())))
-                end
-                singlePacketNextSend = os.clock() + delay
-            end
-            if #singlePacketQueue == 0 then
-                singlePacketQueue = nil
-                print(chat.header('ScentHound') .. chat.message('All packets sent.'))
-            end
-        end
+        -- Packet queue is now processed globally, not just when UI is open
 
         if imgui.BeginTabBar('##ScentHoundTabBar', ImGuiTabBarFlags_NoCloseWithMiddleMouseButton) then
             if imgui.BeginTabItem('Active Tracking') then
-                if imgui.BeginChild('TrackList', {0, 340}, true) then
+                if imgui.BeginChild('TrackList', { 0, 340 }, true) then
                     if imgui.BeginTable('TrackTable', 2, bit.bor(ImGuiTableFlags_RowBg, ImGuiTableFlags_BordersInnerV, ImGuiTableFlags_SizingStretchProp)) then
                         imgui.TableSetupColumn('##EntityColumn', ImGuiTableColumnFlags_WidthStretch)
                         imgui.TableSetupColumn('##Action', ImGuiTableColumnFlags_WidthFixed)
@@ -412,7 +422,12 @@ function gui:Tick()
                         imgui.EndGroup();
                     end
                     if entry.Draw then
+                        local oldColor = entry.Color
                         ColorSelector(entry, 'Color');
+                        if entry.Color ~= oldColor then
+                            gSettings.EntityColors[entry.Id] = entry.Color
+                            settings.save()
+                        end
                     end
                     if imgui.Button('Remove##ScentHoundRemoveButton') then
                         gPacketList[entry] = nil;
@@ -425,6 +440,8 @@ function gui:Tick()
                     imgui.ShowHelp('Remove monster from tracking.');
                 end
                 imgui.EndTabItem();
+            else
+                trackSelection = -1
             end
 
             if imgui.BeginTabItem('Zone List') then
@@ -453,7 +470,7 @@ function gui:Tick()
                     end
                 end
 
-                if imgui.BeginChild('ZoneList', {0, 340}, true) then
+                if imgui.BeginChild('ZoneList', { 0, 340 }, true) then
                     local clipper = ImGuiListClipper.new();
                     clipper:Begin(#searchResults, -1);
                     while clipper:Step() do

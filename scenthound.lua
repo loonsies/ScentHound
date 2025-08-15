@@ -1,8 +1,8 @@
-addon.name      = 'ScentHound';
-addon.author    = 'Thorny';
-addon.version   = '1.03';
-addon.desc      = 'Tracks monster and NPC spawns and provides alerts/onscreen indications.';
-addon.link      = 'https://ashitaxi.com/';
+addon.name    = 'ScentHound';
+addon.author  = 'Thorny';
+addon.version = '1.03';
+addon.desc    = 'Tracks monster and NPC spawns and provides alerts/onscreen indications.';
+addon.link    = 'https://ashitaxi.com/';
 
 require('common');
 chat = require('chat');
@@ -11,11 +11,11 @@ local gui = require('gui');
 local indicator = require('indicator');
 local tracker = require('tracker');
 
-local defaultSettings = T{
+local defaultSettings = T {
     AllowPacketSearch = false,
     DefaultColor = 0xFF00FF80,
     IdentifierType = 'Index (Hex)',
-    Monitored = T{},
+    Monitored = T {},
     PacketSearchDelay = 1.5,
     Sound = 'Alert.wav',
 };
@@ -27,7 +27,7 @@ gUpdate = false;
 gUpdateTimer = 0;
 gLocationCache = {};
 
-local function TrySaveSettings(force)    
+local function TrySaveSettings(force)
     if (gUpdate) and ((force) or (os.clock() > gUpdateTimer)) then
         settings.save();
         gUpdate = false;
@@ -67,6 +67,7 @@ ashita.events.register('command', 'scenthound_command_cb', function (e)
 end);
 
 ashita.events.register('d3d_present', 'scenthound_handlerender', function ()
+    ProcessSinglePacketQueue();
     gui:Tick();
     indicator:Tick();
     TrySaveSettings();
@@ -88,21 +89,21 @@ ashita.events.register('packet_in', 'scenthound_handleincomingpacket', function 
         if bit.band(struct.unpack('B', e.data, 0x0A + 1), 0x01) == 0x01 then
             local index = struct.unpack('H', e.data, 0x08 + 1);
             gLocationCache[index] = {
-                X = struct.unpack('f', e.data, 0x0C+1),
-                Y = struct.unpack('f', e.data, 0x14+1),
-                Z = struct.unpack('f', e.data, 0x10+1)
+                X = struct.unpack('f', e.data, 0x0C + 1),
+                Y = struct.unpack('f', e.data, 0x14 + 1),
+                Z = struct.unpack('f', e.data, 0x10 + 1)
             };
         end
-        
+
         tracker:HandleEntityUpdate(e);
     end
 
     if (e.id == 0xF5) then
-        local index = struct.unpack('H', e.data, 0x12+1);
+        local index = struct.unpack('H', e.data, 0x12 + 1);
         gLocationCache[index] = {
-            X = struct.unpack('f', e.data, 0x04+1),
-            Y = struct.unpack('f', e.data, 0x0C+1),
-            Z = struct.unpack('f', e.data, 0x08+1)
+            X = struct.unpack('f', e.data, 0x04 + 1),
+            Y = struct.unpack('f', e.data, 0x0C + 1),
+            Z = struct.unpack('f', e.data, 0x08 + 1)
         };
     end
 end);
