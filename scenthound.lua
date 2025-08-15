@@ -20,6 +20,7 @@ local defaultSettings = T{
     Sound = 'Alert.wav',
 };
 gSettings = settings.load(defaultSettings);
+gui:Init()
 gPacketList = {};
 gZoneList = {};
 gUpdate = false;
