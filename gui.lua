@@ -224,14 +224,6 @@ function gui:Tick()
             profileInputModal.visible = true
         end
         imgui.SameLine()
-        if imgui.Button('Save', { 70, 0 }) then
-            if profileNames[comboIndex] then
-                profileConfirmModal.action = 'overwrite'
-                profileConfirmModal.name = profileNames[comboIndex]
-                profileConfirmModal.visible = true
-            end
-        end
-        imgui.SameLine()
         if imgui.Button('Delete', { 70, 0 }) then
             if profileNames[comboIndex] then
                 profileConfirmModal.action = 'delete'
@@ -278,19 +270,7 @@ function gui:Tick()
             imgui.OpenPopup('ProfileConfirm')
         end
         if imgui.BeginPopupModal('ProfileConfirm', nil, ImGuiWindowFlags_AlwaysAutoResize) then
-            if profileConfirmModal.action == 'overwrite' then
-                imgui.Text(string.format('Overwrite profile "%s" with current tracked mobs?', profileConfirmModal.name))
-                if imgui.Button('OK', { 80, 0 }) then
-                    saveCurrentProfile(profileConfirmModal.name)
-                    profileConfirmModal.visible = false
-                    imgui.CloseCurrentPopup()
-                end
-                imgui.SameLine()
-                if imgui.Button('Cancel', { 80, 0 }) then
-                    profileConfirmModal.visible = false
-                    imgui.CloseCurrentPopup()
-                end
-            elseif profileConfirmModal.action == 'delete' then
+            if profileConfirmModal.action == 'delete' then
                 imgui.Text(string.format('Delete profile "%s"? This cannot be undone.', profileConfirmModal.name))
                 if imgui.Button('OK', { 80, 0 }) then
                     deleteProfile(profileConfirmModal.name)
@@ -367,77 +347,81 @@ function gui:Tick()
 
                     gUpdate = true;
                     gUpdateTimer = os.clock() + 5;
+                    settings.save();
                     RebuildTracking();
                     trackSelection = -1;
                 end
 
                 if trackSelection ~= -1 then
                     local entry = sortedTrack[trackSelection];
-                    imgui.BeginGroup();
-                    if imgui.Checkbox('Alarm##ScentHoundAlarmButton', { entry.Alarm }) then
-                        entry.Alarm = not entry.Alarm;
-                        gUpdate = true;
-                        gUpdateTimer = os.clock() + 5;
-                    end
-                    imgui.ShowHelp('Play an audible alarm when the monster pops.');
-                    if imgui.Checkbox('Draw##ScentHoundDrawButton', { entry.Draw }) then
-                        entry.Draw = not entry.Draw;
-                        gUpdate = true;
-                        gUpdateTimer = os.clock() + 5;
-                    end
-                    imgui.ShowHelp('Draw an arc to the monster when the monster is alive.');
-                    imgui.EndGroup();
-                    imgui.SameLine();
-                    imgui.BeginGroup();
-                    if imgui.Checkbox('Widescan On Pop##ScentHoundWidescanButton', { entry.Widescan }) then
-                        entry.Widescan = not entry.Widescan;
-                        gUpdate = true;
-                        gUpdateTimer = os.clock() + 5;
-                    end
-                    imgui.ShowHelp('Immediately track monster on widescan when it pops.');
-                    if imgui.Button('Single Widescan') then
-                        local cmd = string.format('/watchdog track %u', bit.band(entry.Id, 0x7FF));
-                        AshitaCore:GetChatManager():QueueCommand(-1, cmd);
-                    end
-                    imgui.ShowHelp('Attempt to track the monster or NPC on widescan.');
-                    imgui.EndGroup();
-                    if gSettings.AllowPacketSearch == true then
+                    if entry then
+                        imgui.BeginGroup();
+                        if imgui.Checkbox('Alarm##ScentHoundAlarmButton', { entry.Alarm }) then
+                            entry.Alarm = not entry.Alarm;
+                            gUpdate = true;
+                            gUpdateTimer = os.clock() + 5;
+                        end
+                        imgui.ShowHelp('Play an audible alarm when the monster pops.');
+                        if imgui.Checkbox('Draw##ScentHoundDrawButton', { entry.Draw }) then
+                            entry.Draw = not entry.Draw;
+                            gUpdate = true;
+                            gUpdateTimer = os.clock() + 5;
+                        end
+                        imgui.ShowHelp('Draw an arc to the monster when the monster is alive.');
+                        imgui.EndGroup();
                         imgui.SameLine();
                         imgui.BeginGroup();
-                        local isTracked = gPacketList[entry] ~= nil;
-                        if imgui.Checkbox('Repeat Packet##ScentHoundPacketsButton', { isTracked }) then
-                            if isTracked then
-                                gPacketList[entry] = nil;
-                            else
-                                gPacketList[entry] = 0;
+                        if imgui.Checkbox('Widescan On Pop##ScentHoundWidescanButton', { entry.Widescan }) then
+                            entry.Widescan = not entry.Widescan;
+                            gUpdate = true;
+                            gUpdateTimer = os.clock() + 5;
+                        end
+                        imgui.ShowHelp('Immediately track monster on widescan when it pops.');
+                        if imgui.Button('Single Widescan') then
+                            local cmd = string.format('/watchdog track %u', bit.band(entry.Id, 0x7FF));
+                            AshitaCore:GetChatManager():QueueCommand(-1, cmd);
+                        end
+                        imgui.ShowHelp('Attempt to track the monster or NPC on widescan.');
+                        imgui.EndGroup();
+                        if gSettings.AllowPacketSearch == true then
+                            imgui.SameLine();
+                            imgui.BeginGroup();
+                            local isTracked = gPacketList[entry] ~= nil;
+                            if imgui.Checkbox('Repeat Packet##ScentHoundPacketsButton', { isTracked }) then
+                                if isTracked then
+                                    gPacketList[entry] = nil;
+                                else
+                                    gPacketList[entry] = 0;
+                                end
+                            end
+                            imgui.ShowHelp('Send periodic 0x16 packets to force server to update monster.');
+                            if imgui.Button('Single Packet') then
+                                local packet = struct.pack('LL', 0, bit.band(entry.Id, 0x7FF));
+                                AshitaCore:GetPacketManager():AddOutgoingPacket(0x16, packet:totable());
+                                print(chat.header('ScentHound') .. chat.message(string.format('Sent update request packet for %s.', entry:ToString())));
+                            end
+                            imgui.ShowHelp('Send one 0x16 packet to force server to update monster.');
+                            imgui.EndGroup();
+                        end
+                        if entry.Draw then
+                            local oldColor = entry.Color
+                            ColorSelector(entry, 'Color');
+                            if entry.Color ~= oldColor then
+                                gSettings.EntityColors[entry.Id] = entry.Color
+                                settings.save()
                             end
                         end
-                        imgui.ShowHelp('Send periodic 0x16 packets to force server to update monster.');
-                        if imgui.Button('Single Packet') then
-                            local packet = struct.pack('LL', 0, bit.band(entry.Id, 0x7FF));
-                            AshitaCore:GetPacketManager():AddOutgoingPacket(0x16, packet:totable());
-                            print(chat.header('ScentHound') .. chat.message(string.format('Sent update request packet for %s.', entry:ToString())));
+                        if imgui.Button('Remove##ScentHoundRemoveButton') then
+                            gPacketList[entry] = nil;
+                            gSettings.Monitored[entry.Id] = nil;
+                            gUpdate = true;
+                            gUpdateTimer = os.clock() + 5;
+                            settings.save();
+                            RebuildTracking();
+                            trackSelection = -1;
                         end
-                        imgui.ShowHelp('Send one 0x16 packet to force server to update monster.');
-                        imgui.EndGroup();
+                        imgui.ShowHelp('Remove monster from tracking.');
                     end
-                    if entry.Draw then
-                        local oldColor = entry.Color
-                        ColorSelector(entry, 'Color');
-                        if entry.Color ~= oldColor then
-                            gSettings.EntityColors[entry.Id] = entry.Color
-                            settings.save()
-                        end
-                    end
-                    if imgui.Button('Remove##ScentHoundRemoveButton') then
-                        gPacketList[entry] = nil;
-                        gSettings.Monitored[entry.Id] = nil;
-                        gUpdate = true;
-                        gUpdateTimer = os.clock() + 5;
-                        RebuildTracking();
-                        trackSelection = -1;
-                    end
-                    imgui.ShowHelp('Remove monster from tracking.');
                 end
                 imgui.EndTabItem();
             else

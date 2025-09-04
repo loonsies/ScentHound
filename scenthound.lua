@@ -47,6 +47,14 @@ ashita.events.register('load', 'load_cb', function ()
             end
         end
     end
+
+    settings.register('settings', 'settings_update_cb', function (newSettings)
+        gSettings = newSettings
+        gPacketList = {}
+        gLocationCache = {}
+        gui:Init()
+        TrySaveSettings(true)
+    end)
 end);
 
 ashita.events.register('unload', 'unload_cb', function ()
