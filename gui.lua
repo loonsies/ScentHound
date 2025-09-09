@@ -62,6 +62,18 @@ function gui:Init()
         print(chat.header('ScentHound') .. chat.message('Profile saved: ' .. name))
     end
 
+    function autoSaveCurrentProfile()
+        local currentProfile = gSettings.LastProfile
+        if currentProfile and currentProfile ~= '' and gSettings.Profiles[currentProfile] then
+            -- Auto-save current tracked mobs to the active profile
+            gSettings.Profiles[currentProfile] = {}
+            for id, _ in pairs(gSettings.Monitored) do
+                gSettings.Profiles[currentProfile][id] = true
+            end
+            settings.save()
+        end
+    end
+
     function isValidMob(obj)
         return type(obj) == 'table' and type(obj.Name) == 'string' and obj.Name ~= '' and obj.Id ~= nil
     end
@@ -205,6 +217,9 @@ function gui:Tick()
             for i, name in ipairs(profileNames) do
                 if imgui.Selectable(name, comboIndex == i) then
                     comboIndex = i
+                    -- Auto-save current profile before switching
+                    autoSaveCurrentProfile()
+                    
                     if name == 'None' then
                         gSettings.LastProfile = ''
                         gSettings.Monitored = T {}
@@ -309,6 +324,7 @@ function gui:Tick()
                                 gUpdate = true;
                                 gUpdateTimer = os.clock() + 5;
                                 settings.save();
+                                autoSaveCurrentProfile();
                                 RebuildTracking();
                                 if trackSelection == index then
                                     trackSelection = -1;
@@ -348,6 +364,7 @@ function gui:Tick()
                     gUpdate = true;
                     gUpdateTimer = os.clock() + 5;
                     settings.save();
+                    autoSaveCurrentProfile();
                     RebuildTracking();
                     trackSelection = -1;
                 end
@@ -417,6 +434,7 @@ function gui:Tick()
                             gUpdate = true;
                             gUpdateTimer = os.clock() + 5;
                             settings.save();
+                            autoSaveCurrentProfile();
                             RebuildTracking();
                             trackSelection = -1;
                         end
@@ -447,6 +465,7 @@ function gui:Tick()
                         gUpdate = true
                         gUpdateTimer = os.clock() + 5
                         settings.save()
+                        autoSaveCurrentProfile()
                         print(chat.header('ScentHound') .. chat.message(string.format('Added %d mobs to tracking.', added)))
                         RebuildTracking()
                     else
@@ -478,6 +497,7 @@ function gui:Tick()
                                         gUpdate = true;
                                         gUpdateTimer = os.clock() + 5;
                                         settings.save();
+                                        autoSaveCurrentProfile();
                                         print(chat.header('ScentHound') .. chat.message(string.format('%s added to tracking.', entry:ToString())));
                                         RebuildTracking();
                                     else
@@ -491,6 +511,7 @@ function gui:Tick()
                                         gUpdate = true;
                                         gUpdateTimer = os.clock() + 5;
                                         settings.save();
+                                        autoSaveCurrentProfile();
                                         print(chat.header('ScentHound') .. chat.message(string.format('%s added to tracking.', entry:ToString())));
                                         RebuildTracking();
                                     else
@@ -520,6 +541,7 @@ function gui:Tick()
                             gUpdate = true;
                             gUpdateTimer = os.clock() + 5;
                             settings.save();
+                            autoSaveCurrentProfile();
                             print(chat.header('ScentHound') .. chat.message(string.format('%s added to tracking.', entry:ToString())));
                             RebuildTracking();
                         else
